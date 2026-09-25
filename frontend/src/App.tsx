@@ -23,12 +23,11 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
-  Server,
   Layers,
   ArrowRight,
   TrendingUp,
   Activity,
-  FileText
+  Menu
 } from 'lucide-react';
 import {
   AreaChart,
@@ -89,9 +88,9 @@ export interface ApiKeyItem {
 }
 
 export default function App() {
-  // Navigation
   const [activeTab, setActiveTab] = useState<'analytics' | 'ledger' | 'simulator' | 'webhooks' | 'apikeys'>('analytics');
   const [environment, setEnvironment] = useState<'LIVE' | 'TEST'>('LIVE');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Transactions State
   const [transactions, setTransactions] = useState<Transaction[]>([
@@ -189,7 +188,7 @@ export default function App() {
     }
   ]);
 
-  // Webhooks Logs State
+  // Webhook Logs
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([
     {
       id: 101,
@@ -232,7 +231,7 @@ export default function App() {
     }
   ]);
 
-  // Api Keys State
+  // Api Keys
   const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([
     {
       id: 'key_1',
@@ -256,12 +255,10 @@ export default function App() {
     }
   ]);
 
-  // Filter & Search in Ledger
+  // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOperator, setFilterOperator] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
-
-  // Selected Transaction for Drawer
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
   // Simulator Form State
@@ -274,16 +271,12 @@ export default function App() {
   const [simLoading, setSimLoading] = useState(false);
   const [simNotification, setSimNotification] = useState<string | null>(null);
 
-  // Key visibility & Copy feedback
   const [visibleKeyId, setVisibleKeyId] = useState<string | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
-
-  // New Key Modal
   const [showNewKeyModal, setShowNewKeyModal] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyEnv, setNewKeyEnv] = useState<'LIVE' | 'TEST'>('LIVE');
 
-  // Auto-detect operator by phone prefix in Benin
   const handlePhoneChange = (val: string) => {
     setSimPhone(val);
     const cleaned = val.replace(/\s+/g, '');
@@ -302,7 +295,6 @@ export default function App() {
     setTimeout(() => setCopiedText(null), 2000);
   };
 
-  // Run Simulation
   const handleRunSimulation = () => {
     setSimLoading(true);
     setSimNotification(null);
@@ -332,7 +324,6 @@ export default function App() {
 
       setTransactions(prev => [newTx, ...prev]);
 
-      // If success, push a webhook dispatch
       if (isSuccess) {
         setWebhookLogs(prev => [
           {
@@ -357,12 +348,10 @@ export default function App() {
           ? `Paiement validé avec succès (${simAmount.toLocaleString()} XOF via ${simOperator})`
           : `Échec simulé : ${newTx.failure_reason}`
       );
-      // Auto-refresh idempotency key for next transaction
       setSimIdempotencyKey(`idemp_${Date.now()}`);
     }, 850);
   };
 
-  // Retry Webhook
   const handleRetryWebhook = (id: number) => {
     setWebhookLogs(prev => prev.map(log => {
       if (log.id === id) {
@@ -378,7 +367,6 @@ export default function App() {
     }));
   };
 
-  // Create Key
   const handleCreateApiKey = () => {
     if (!newKeyName.trim()) return;
     const newKey: ApiKeyItem = {
@@ -396,7 +384,6 @@ export default function App() {
     setNewKeyName('');
   };
 
-  // Filtered transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter(tx => {
       const matchSearch = 
@@ -410,7 +397,6 @@ export default function App() {
     });
   }, [transactions, searchTerm, filterOperator, filterStatus]);
 
-  // Aggregate Metrics
   const totalVolume = useMemo(() => {
     return transactions
       .filter(t => t.status === 'SUCCESS')
@@ -429,123 +415,124 @@ export default function App() {
     return Math.round((successes / transactions.length) * 100);
   }, [transactions]);
 
-  // Operator badges config with high contrast
-  const operatorConfig: Record<PaymentOperator, { label: string; bg: string; text: string; border: string }> = {
-    MTN_MOMO: { label: 'MTN MoMo Bénin', bg: 'bg-amber-500/15', text: 'text-amber-300', border: 'border-amber-500/40' },
-    MOOV_MONEY: { label: 'Moov Money Bénin', bg: 'bg-blue-500/15', text: 'text-blue-300', border: 'border-blue-500/40' },
-    CELTIIS_CASH: { label: 'Celtiis Cash', bg: 'bg-emerald-500/15', text: 'text-emerald-300', border: 'border-emerald-500/40' },
-    VISA_CARD: { label: 'Carte Bancaire', bg: 'bg-purple-500/15', text: 'text-purple-300', border: 'border-purple-500/40' }
+  // Strict 2-color palette: Corporate Blue (#1D4ED8) + Neutral Slate (#0F172A / #64748B)
+  const operatorNames: Record<PaymentOperator, string> = {
+    MTN_MOMO: 'MTN MoMo Bénin',
+    MOOV_MONEY: 'Moov Money Bénin',
+    CELTIIS_CASH: 'Celtiis Cash',
+    VISA_CARD: 'Carte Bancaire'
   };
 
-  const statusConfig: Record<PaymentStatus, { label: string; bg: string; text: string; border: string; icon: any }> = {
-    SUCCESS: { label: 'Succès', bg: 'bg-emerald-500/15', text: 'text-emerald-300', border: 'border-emerald-500/40', icon: CheckCircle2 },
-    PENDING: { label: 'En attente', bg: 'bg-amber-500/15', text: 'text-amber-300', border: 'border-amber-500/40', icon: Clock },
-    FAILED: { label: 'Échec', bg: 'bg-rose-500/15', text: 'text-rose-300', border: 'border-rose-500/40', icon: XCircle },
-    REFUNDED: { label: 'Remboursé', bg: 'bg-slate-500/15', text: 'text-slate-300', border: 'border-slate-500/40', icon: RotateCcw }
-  };
-
-  // Recharts Chart Data
   const chartData = [
-    { time: '08:00', volume: 180000, transactions: 12 },
-    { time: '10:00', volume: 420000, transactions: 28 },
-    { time: '12:00', volume: 680000, transactions: 44 },
-    { time: '14:00', volume: 510000, transactions: 35 },
-    { time: '16:00', volume: 890000, transactions: 58 },
-    { time: '18:00', volume: 740000, transactions: 46 }
+    { time: '08:00', volume: 180000 },
+    { time: '10:00', volume: 420000 },
+    { time: '12:00', volume: 680000 },
+    { time: '14:00', volume: 510000 },
+    { time: '16:00', volume: 890000 },
+    { time: '18:00', volume: 740000 }
   ];
 
+  // Monochromatic Blue/Slate Donut
   const pieData = [
-    { name: 'MTN MoMo', value: 48, color: '#F59E0B' },
+    { name: 'MTN MoMo', value: 48, color: '#1D4ED8' },
     { name: 'Moov Money', value: 32, color: '#3B82F6' },
-    { name: 'Celtiis Cash', value: 15, color: '#10B981' },
-    { name: 'Cartes Visa/MC', value: 5, color: '#8B5CF6' }
+    { name: 'Celtiis Cash', value: 15, color: '#60A5FA' },
+    { name: 'Cartes Visa/MC', value: 5, color: '#94A3B8' }
   ];
 
   return (
-    <div className="min-h-screen bg-[#090D1A] text-slate-100 flex flex-col font-sans">
-      {/* Top Banner Navigation */}
-      <header className="border-b border-slate-800 bg-[#0D1424] sticky top-0 z-30 shadow-md">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans">
+      {/* Top Enterprise Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            {/* Logo & Title */}
+            {/* Logo & Product Title */}
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center shadow-lg shadow-indigo-600/30 border border-indigo-400/30">
-                <CreditCard className="w-6 h-6 text-white" />
+              <div className="w-11 h-11 rounded-xl bg-blue-700 flex items-center justify-center text-white shadow-sm">
+                <CreditCard className="w-6 h-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">KPay Orchestrator</h1>
-                  <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">KPay Orchestrator</h1>
+                  <span className="hidden sm:inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-50 text-blue-800 border border-blue-200">
                     FinTech UEMOA
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-slate-300 font-medium">Passerelle & Agrégation de Paiements Multi-Opérateurs</p>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium">Passerelle de Paiements Multi-Opérateurs</p>
               </div>
             </div>
 
-            {/* Environment Toggle & Actions */}
+            {/* Environment Toggle & Action */}
             <div className="flex items-center gap-3">
               {/* Environment Switcher */}
-              <div className="flex items-center bg-[#131D33] p-1 rounded-lg border border-slate-700">
+              <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
                 <button
                   onClick={() => setEnvironment('LIVE')}
                   className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
                     environment === 'LIVE'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-300 hover:text-white'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  LIVE (Prod)
+                  <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                  LIVE
                 </button>
                 <button
                   onClick={() => setEnvironment('TEST')}
                   className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
                     environment === 'TEST'
-                      ? 'bg-amber-600 text-white shadow-sm'
-                      : 'text-slate-300 hover:text-white'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                  SANDBOX
+                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                  TEST
                 </button>
               </div>
 
-              {/* Quick Action Button */}
+              {/* Action Button */}
               <button
                 onClick={() => setActiveTab('simulator')}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-lg shadow-md shadow-blue-900/30 border border-blue-400/30 flex items-center gap-2 transition"
+                className="hidden sm:flex px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-lg shadow-sm items-center gap-2 transition"
               >
                 <Plus className="w-4 h-4" />
                 <span>Simuler Encaissement</span>
               </button>
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="sm:hidden p-2 rounded-lg bg-slate-100 text-slate-700 hover:text-slate-900"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-1 -mb-px overflow-x-auto pt-2 border-t border-slate-800/80">
+          {/* Navigation Tabs (Desktop & Tablet) */}
+          <div className="hidden sm:flex items-center gap-1 -mb-px overflow-x-auto pt-1 border-t border-slate-100">
             <button
               onClick={() => setActiveTab('analytics')}
               className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-semibold transition whitespace-nowrap ${
                 activeTab === 'analytics'
-                  ? 'border-blue-500 text-white bg-blue-500/10'
-                  : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/40'
+                  ? 'border-blue-700 text-blue-700 bg-blue-50/50'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <BarChart3 className="w-4 h-4 text-blue-400" />
+              <BarChart3 className="w-4 h-4" />
               <span>Tableau de Bord & KPIs</span>
             </button>
             <button
               onClick={() => setActiveTab('ledger')}
               className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-semibold transition whitespace-nowrap ${
                 activeTab === 'ledger'
-                  ? 'border-blue-500 text-white bg-blue-500/10'
-                  : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/40'
+                  ? 'border-blue-700 text-blue-700 bg-blue-50/50'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <ListOrdered className="w-4 h-4 text-indigo-400" />
+              <ListOrdered className="w-4 h-4" />
               <span>Grand Livre (Transactions)</span>
-              <span className="px-2 py-0.5 rounded-full text-xs bg-slate-700 text-slate-200 font-bold">
+              <span className="px-2 py-0.5 rounded-full text-xs bg-slate-200 text-slate-800 font-bold">
                 {transactions.length}
               </span>
             </button>
@@ -553,36 +540,66 @@ export default function App() {
               onClick={() => setActiveTab('simulator')}
               className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-semibold transition whitespace-nowrap ${
                 activeTab === 'simulator'
-                  ? 'border-blue-500 text-white bg-blue-500/10'
-                  : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/40'
+                  ? 'border-blue-700 text-blue-700 bg-blue-50/50'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <Zap className="w-4 h-4 text-amber-400" />
+              <Zap className="w-4 h-4" />
               <span>Simulateur & Idempotence</span>
             </button>
             <button
               onClick={() => setActiveTab('webhooks')}
               className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-semibold transition whitespace-nowrap ${
                 activeTab === 'webhooks'
-                  ? 'border-blue-500 text-white bg-blue-500/10'
-                  : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/40'
+                  ? 'border-blue-700 text-blue-700 bg-blue-50/50'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <Radio className="w-4 h-4 text-cyan-400" />
+              <Radio className="w-4 h-4" />
               <span>Webhooks & Retry Backoff</span>
             </button>
             <button
               onClick={() => setActiveTab('apikeys')}
               className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-semibold transition whitespace-nowrap ${
                 activeTab === 'apikeys'
-                  ? 'border-blue-500 text-white bg-blue-500/10'
-                  : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-800/40'
+                  ? 'border-blue-700 text-blue-700 bg-blue-50/50'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <Key className="w-4 h-4 text-emerald-400" />
+              <Key className="w-4 h-4" />
               <span>Sécurité & Clés API</span>
             </button>
           </div>
+
+          {/* Mobile Dropdown Navigation */}
+          {mobileMenuOpen && (
+            <div className="sm:hidden py-3 border-t border-slate-200 space-y-1">
+              {[
+                { id: 'analytics', label: 'Tableau de Bord & KPIs', icon: BarChart3 },
+                { id: 'ledger', label: `Grand Livre (${transactions.length})`, icon: ListOrdered },
+                { id: 'simulator', label: 'Simulateur & Idempotence', icon: Zap },
+                { id: 'webhooks', label: 'Webhooks & Retry Backoff', icon: Radio },
+                { id: 'apikeys', label: 'Sécurité & Clés API', icon: Key }
+              ].map(item => {
+                const IconComponent = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id as any);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold text-left ${
+                      activeTab === item.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <IconComponent className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </header>
 
@@ -596,71 +613,70 @@ export default function App() {
           <div className="space-y-8">
             {/* Top Stat Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <div className="p-5 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
+              <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-300">Volume Total Encaissé</span>
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center border border-blue-500/30">
+                  <span className="text-sm font-semibold text-slate-500">Volume Total Encaissé</span>
+                  <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
                     <TrendingUp className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="mt-4">
-                  <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                    {totalVolume.toLocaleString()} <span className="text-base text-blue-300 font-semibold">XOF</span>
+                <div className="mt-3">
+                  <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    {totalVolume.toLocaleString()} <span className="text-base font-semibold text-slate-500">XOF</span>
                   </p>
-                  <p className="mt-1 text-xs font-semibold text-emerald-400 flex items-center gap-1">
-                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  <p className="mt-1 text-xs font-semibold text-slate-600 flex items-center gap-1">
+                    <ArrowUpRight className="w-3.5 h-3.5 text-blue-700" />
                     +18.4% par rapport au mois précédent
                   </p>
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
+              <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-300">Taux de Succès Réseau</span>
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center border border-emerald-500/30">
+                  <span className="text-sm font-semibold text-slate-500">Taux de Succès Réseau</span>
+                  <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="mt-4">
-                  <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                <div className="mt-3">
+                  <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                     {successRate}%
                   </p>
-                  <p className="mt-1 text-xs font-semibold text-emerald-400 flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" />
-                    Haute disponibilité passerelle UEMOA
+                  <p className="mt-1 text-xs font-semibold text-slate-600">
+                    Disponibilité nominale passerelle
                   </p>
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
+              <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-300">Commissions Nettes</span>
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center border border-indigo-500/30">
+                  <span className="text-sm font-semibold text-slate-500">Commissions Nettes</span>
+                  <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
                     <Layers className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="mt-4">
-                  <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                    {totalFees.toLocaleString()} <span className="text-base text-indigo-300 font-semibold">XOF</span>
+                <div className="mt-3">
+                  <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    {totalFees.toLocaleString()} <span className="text-base font-semibold text-slate-500">XOF</span>
                   </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-300">
+                  <p className="mt-1 text-xs font-semibold text-slate-600">
                     Barème moyen appliqué : 1.5%
                   </p>
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
+              <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-300">Latence Moyenne Telco</span>
-                  <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-300 flex items-center justify-center border border-cyan-500/30">
+                  <span className="text-sm font-semibold text-slate-500">Latence Moyenne Telco</span>
+                  <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
                     <Activity className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="mt-4">
-                  <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                    420 <span className="text-base text-cyan-300 font-semibold">ms</span>
+                <div className="mt-3">
+                  <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                    420 <span className="text-base font-semibold text-slate-500">ms</span>
                   </p>
-                  <p className="mt-1 text-xs font-semibold text-cyan-400">
+                  <p className="mt-1 text-xs font-semibold text-slate-600">
                     Connexion directe USSD & Push Webhook
                   </p>
                 </div>
@@ -670,13 +686,13 @@ export default function App() {
             {/* Graphs Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Evolution Chart */}
-              <div className="lg:col-span-2 p-6 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
+              <div className="lg:col-span-2 p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-bold text-white">Évolution du Volume des Flux (XOF)</h3>
-                    <p className="text-xs font-medium text-slate-300">Tranches horaires de la journée en cours</p>
+                    <h3 className="text-base font-bold text-slate-900">Évolution du Volume des Flux (XOF)</h3>
+                    <p className="text-xs text-slate-500">Tranches horaires de la journée en cours</p>
                   </div>
-                  <span className="px-3 py-1 text-xs font-bold rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  <span className="px-2.5 py-1 text-xs font-semibold rounded-md bg-blue-50 text-blue-800 border border-blue-200">
                     Temps Réel
                   </span>
                 </div>
@@ -685,28 +701,28 @@ export default function App() {
                     <AreaChart data={chartData}>
                       <defs>
                         <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.0}/>
+                          <stop offset="5%" stopColor="#1D4ED8" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#1D4ED8" stopOpacity={0.0}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
-                      <XAxis dataKey="time" stroke="#94A3B8" fontSize={12} tickLine={false} />
-                      <YAxis stroke="#94A3B8" fontSize={12} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                      <XAxis dataKey="time" stroke="#64748B" fontSize={12} tickLine={false} />
+                      <YAxis stroke="#64748B" fontSize={12} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} />
                       <Tooltip 
-                        contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '8px', color: '#fff' }}
+                        contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#CBD5E1', borderRadius: '8px', color: '#0F172A' }}
                         formatter={(val: number) => [`${val.toLocaleString()} XOF`, 'Volume']}
                       />
-                      <Area type="monotone" dataKey="volume" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorVolume)" />
+                      <Area type="monotone" dataKey="volume" stroke="#1D4ED8" strokeWidth={2.5} fillOpacity={1} fill="url(#colorVolume)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Operator Distribution Donut */}
-              <div className="p-6 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md flex flex-col justify-between">
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-white">Répartition par Opérateur</h3>
-                  <p className="text-xs font-medium text-slate-300">Parts de marché Mobile Money Bénin</p>
+                  <h3 className="text-base font-bold text-slate-900">Répartition par Opérateur</h3>
+                  <p className="text-xs text-slate-500">Parts de marché Mobile Money Bénin</p>
                 </div>
                 <div className="h-48 w-full my-2">
                   <ResponsiveContainer width="100%" height="100%">
@@ -717,25 +733,25 @@ export default function App() {
                         cy="50%"
                         innerRadius={50}
                         outerRadius={75}
-                        paddingAngle={5}
+                        paddingAngle={4}
                         dataKey="value"
                       >
                         {pieData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '8px', color: '#fff' }} />
+                      <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#CBD5E1', borderRadius: '8px', color: '#0F172A' }} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="space-y-2 pt-2 border-t border-slate-800">
+                <div className="space-y-2 pt-2 border-t border-slate-100">
                   {pieData.map(item => (
                     <div key={item.name} className="flex items-center justify-between text-xs font-semibold">
                       <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></span>
-                        <span className="text-slate-200">{item.name}</span>
+                        <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }}></span>
+                        <span className="text-slate-700">{item.name}</span>
                       </div>
-                      <span className="text-white font-bold">{item.value}%</span>
+                      <span className="text-slate-900 font-bold">{item.value}%</span>
                     </div>
                   ))}
                 </div>
@@ -743,15 +759,15 @@ export default function App() {
             </div>
 
             {/* Quick Preview of Last Transactions */}
-            <div className="p-6 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
+            <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-white">Dernières Transactions Validées</h3>
-                  <p className="text-xs font-medium text-slate-300">Aperçu rapide des flux récents</p>
+                  <h3 className="text-base font-bold text-slate-900">Dernières Transactions Validées</h3>
+                  <p className="text-xs text-slate-500">Aperçu rapide des flux récents</p>
                 </div>
                 <button
                   onClick={() => setActiveTab('ledger')}
-                  className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 transition"
+                  className="text-xs font-bold text-blue-700 hover:text-blue-800 flex items-center gap-1 transition"
                 >
                   Voir tout le Grand Livre <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -759,7 +775,7 @@ export default function App() {
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-[#16213A] text-slate-300 font-bold border-b border-slate-700">
+                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                     <tr>
                       <th className="py-3 px-4">Référence</th>
                       <th className="py-3 px-4">Client</th>
@@ -769,43 +785,43 @@ export default function App() {
                       <th className="py-3 px-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {transactions.slice(0, 4).map(tx => {
-                      const op = operatorConfig[tx.operator];
-                      const st = statusConfig[tx.status];
-                      const StatusIcon = st.icon;
-                      return (
-                        <tr key={tx.id} className="hover:bg-slate-800/40 transition">
-                          <td className="py-3 px-4 font-mono font-bold text-white">{tx.reference}</td>
-                          <td className="py-3 px-4">
-                            <div className="font-semibold text-slate-200">{tx.customer_phone}</div>
-                            <div className="text-xs text-slate-400">{tx.customer_email}</div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2.5 py-1 rounded-md text-xs font-bold border ${op.bg} ${op.text} ${op.border}`}>
-                              {op.label}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right font-extrabold text-white">
-                            {tx.amount.toLocaleString()} XOF
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${st.bg} ${st.text} ${st.border}`}>
-                              <StatusIcon className="w-3.5 h-3.5" />
-                              {st.label}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => setSelectedTx(tx)}
-                              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-semibold border border-slate-700 transition"
-                            >
-                              Détails
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                  <tbody className="divide-y divide-slate-100">
+                    {transactions.slice(0, 4).map(tx => (
+                      <tr key={tx.id} className="hover:bg-slate-50 transition">
+                        <td className="py-3 px-4 font-mono font-bold text-slate-900">{tx.reference}</td>
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-slate-800">{tx.customer_phone}</div>
+                          <div className="text-xs text-slate-500">{tx.customer_email}</div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                            {operatorNames[tx.operator]}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-extrabold text-slate-900">
+                          {tx.amount.toLocaleString()} XOF
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            tx.status === 'SUCCESS' 
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                              : tx.status === 'PENDING'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}>
+                            {tx.status === 'SUCCESS' ? 'Succès' : (tx.status === 'PENDING' ? 'En attente' : 'Échec')}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => setSelectedTx(tx)}
+                            className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-md text-xs font-semibold border border-slate-200 transition"
+                          >
+                            Détails
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -818,59 +834,54 @@ export default function App() {
         {/* ============================================================== */}
         {activeTab === 'ledger' && (
           <div className="space-y-6">
-            {/* Header & Filter Controls */}
-            <div className="p-6 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md space-y-4">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-bold text-white">Grand Livre des Transactions</h2>
-                  <p className="text-xs sm:text-sm font-medium text-slate-300">
+                  <h2 className="text-xl font-bold text-slate-900">Grand Livre des Transactions</h2>
+                  <p className="text-xs sm:text-sm text-slate-500">
                     Registre complet inaltérable et audit de conformité financière UEMOA
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const csvContent = "data:text/csv;charset=utf-8," + 
-                        ["Reference,Montant,Frais,Operateur,Statut,Client,Date",
-                          ...transactions.map(t => `${t.reference},${t.amount},${t.fee},${t.operator},${t.status},${t.customer_phone},${t.created_at}`)
-                        ].join("\n");
-                      const encodedUri = encodeURI(csvContent);
-                      const link = document.createElement("a");
-                      link.setAttribute("href", encodedUri);
-                      link.setAttribute("download", `kpay_transactions_${Date.now()}.csv`);
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
-                    className="px-3.5 py-2 bg-[#1A2642] hover:bg-[#23335A] text-slate-200 text-xs sm:text-sm font-bold rounded-xl border border-slate-700 flex items-center gap-2 transition"
-                  >
-                    <Download className="w-4 h-4 text-blue-400" />
-                    <span>Exporter CSV</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    const csvContent = "data:text/csv;charset=utf-8," + 
+                      ["Reference,Montant,Frais,Operateur,Statut,Client,Date",
+                        ...transactions.map(t => `${t.reference},${t.amount},${t.fee},${t.operator},${t.status},${t.customer_phone},${t.created_at}`)
+                      ].join("\n");
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", `kpay_transactions_${Date.now()}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold rounded-lg border border-slate-200 flex items-center gap-2 transition"
+                >
+                  <Download className="w-4 h-4 text-slate-500" />
+                  <span>Exporter CSV</span>
+                </button>
               </div>
 
               {/* Filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800">
-                {/* Search */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
                 <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Recherche par réf, téléphone, email, clé..."
-                    className="w-full bg-[#0D1527] border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                    placeholder="Recherche par réf, tél, clé..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
                   />
                 </div>
 
-                {/* Operator Filter */}
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-slate-400 shrink-0" />
                   <select
                     value={filterOperator}
                     onChange={(e) => setFilterOperator(e.target.value)}
-                    className="w-full bg-[#0D1527] border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
                   >
                     <option value="ALL">Tous les Opérateurs</option>
                     <option value="MTN_MOMO">MTN Mobile Money</option>
@@ -880,12 +891,11 @@ export default function App() {
                   </select>
                 </div>
 
-                {/* Status Filter */}
                 <div>
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="w-full bg-[#0D1527] border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-900 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
                   >
                     <option value="ALL">Tous les Statuts</option>
                     <option value="SUCCESS">Succès (Validé)</option>
@@ -897,75 +907,63 @@ export default function App() {
               </div>
             </div>
 
-            {/* Transactions Table */}
-            <div className="p-6 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
+            {/* Table */}
+            <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-[#16213A] text-slate-300 font-bold border-b border-slate-700">
+                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                     <tr>
                       <th className="py-3 px-4">Horodatage</th>
-                      <th className="py-3 px-4">Référence Unique</th>
-                      <th className="py-3 px-4">Client & Contact</th>
-                      <th className="py-3 px-4">Opérateur Réseau</th>
+                      <th className="py-3 px-4">Référence</th>
+                      <th className="py-3 px-4">Client</th>
+                      <th className="py-3 px-4">Opérateur</th>
                       <th className="py-3 px-4 text-right">Montant Brut</th>
                       <th className="py-3 px-4 text-right">Commission</th>
                       <th className="py-3 px-4 text-center">Statut</th>
                       <th className="py-3 px-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {filteredTransactions.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
-                          Aucune transaction trouvée correspondant à vos critères de recherche.
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredTransactions.map(tx => (
+                      <tr key={tx.id} className="hover:bg-slate-50 transition">
+                        <td className="py-3.5 px-4 text-xs text-slate-500 whitespace-nowrap">{tx.created_at}</td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">{tx.reference}</td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-semibold text-slate-800">{tx.customer_phone}</div>
+                          <div className="text-xs text-slate-400 truncate max-w-[180px]">{tx.customer_email}</div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                            {operatorNames[tx.operator]}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-extrabold text-slate-900 whitespace-nowrap">
+                          {tx.amount.toLocaleString()} XOF
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-semibold text-slate-500 whitespace-nowrap">
+                          {tx.fee.toLocaleString()} XOF
+                        </td>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            tx.status === 'SUCCESS' 
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                              : tx.status === 'PENDING'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}>
+                            {tx.status === 'SUCCESS' ? 'Succès' : (tx.status === 'PENDING' ? 'En attente' : 'Échec')}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => setSelectedTx(tx)}
+                            className="px-3 py-1 bg-white hover:bg-slate-50 text-blue-700 font-semibold rounded-md text-xs border border-blue-200 transition"
+                          >
+                            Examiner
+                          </button>
                         </td>
                       </tr>
-                    ) : (
-                      filteredTransactions.map(tx => {
-                        const op = operatorConfig[tx.operator];
-                        const st = statusConfig[tx.status];
-                        const StatusIcon = st.icon;
-                        return (
-                          <tr key={tx.id} className="hover:bg-slate-800/40 transition">
-                            <td className="py-3.5 px-4 text-xs font-semibold text-slate-400 whitespace-nowrap">
-                              {tx.created_at}
-                            </td>
-                            <td className="py-3.5 px-4 font-mono font-bold text-white whitespace-nowrap">
-                              {tx.reference}
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <div className="font-semibold text-slate-200">{tx.customer_phone}</div>
-                              <div className="text-xs text-slate-400 truncate max-w-[180px]">{tx.customer_email}</div>
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <span className={`px-2.5 py-1 rounded-md text-xs font-bold border ${op.bg} ${op.text} ${op.border}`}>
-                                {op.label}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-extrabold text-white whitespace-nowrap">
-                              {tx.amount.toLocaleString()} XOF
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-semibold text-slate-300 whitespace-nowrap">
-                              {tx.fee.toLocaleString()} XOF
-                            </td>
-                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${st.bg} ${st.text} ${st.border}`}>
-                                <StatusIcon className="w-3.5 h-3.5" />
-                                {st.label}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                              <button
-                                onClick={() => setSelectedTx(tx)}
-                                className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 font-bold rounded-lg text-xs border border-blue-500/40 transition"
-                              >
-                                Examiner
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -978,37 +976,35 @@ export default function App() {
         {/* ============================================================== */}
         {activeTab === 'simulator' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Simulation Form */}
-            <div className="lg:col-span-7 p-6 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md space-y-6">
+            <div className="lg:col-span-7 p-6 rounded-xl bg-white border border-slate-200 shadow-sm space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-amber-400" />
-                  Simulateur d'Encaissement & Verrouillage d'Idempotence
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-blue-700" />
+                  Simulateur d'Encaissement & Idempotence
                 </h2>
-                <p className="text-xs sm:text-sm font-medium text-slate-300 mt-1">
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">
                   Testez en direct les flux USSD et l'immunité au double débit via l'en-tête Idempotency-Key
                 </p>
               </div>
 
               {simNotification && (
-                <div className={`p-4 rounded-xl border text-sm font-semibold flex items-center gap-3 ${
+                <div className={`p-4 rounded-lg border text-sm font-semibold flex items-center gap-3 ${
                   simNotification.includes('succès')
-                    ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
-                    : 'bg-rose-950/40 border-rose-500/50 text-rose-200'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-rose-50 border-rose-200 text-rose-800'
                 }`}>
                   {simNotification.includes('succès') ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                   ) : (
-                    <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+                    <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
                   )}
                   <span>{simNotification}</span>
                 </div>
               )}
 
               <div className="space-y-4">
-                {/* Montant */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Montant de la Charge (XOF)
                   </label>
                   <div className="relative">
@@ -1016,18 +1012,17 @@ export default function App() {
                       type="number"
                       value={simAmount}
                       onChange={(e) => setSimAmount(Number(e.target.value))}
-                      className="w-full bg-[#0D1527] border border-slate-700 rounded-xl px-4 py-3 text-lg font-extrabold text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-lg font-extrabold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
                     />
-                    <span className="absolute right-4 top-3.5 text-sm font-bold text-blue-400">
+                    <span className="absolute right-4 top-3 text-sm font-bold text-slate-500">
                       XOF (FCFA)
                     </span>
                   </div>
                 </div>
 
-                {/* Téléphone & Détection Opérateur */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Numéro Téléphone Client
                     </label>
                     <input
@@ -1035,19 +1030,19 @@ export default function App() {
                       value={simPhone}
                       onChange={(e) => handlePhoneChange(e.target.value)}
                       placeholder="+229 97 00 00 00"
-                      className="w-full bg-[#0D1527] border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
                     />
-                    <p className="text-xs text-slate-400 mt-1">Détection automatique selon l'indicatif Bénin</p>
+                    <p className="text-[11px] text-slate-500 mt-1">Détection opérateur selon préfixe Bénin</p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                      Opérateur Passerelle Détecté
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Opérateur Passerelle
                     </label>
                     <select
                       value={simOperator}
                       onChange={(e) => setSimOperator(e.target.value as PaymentOperator)}
-                      className="w-full bg-[#0D1527] border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
                     >
                       <option value="MTN_MOMO">MTN Mobile Money Bénin</option>
                       <option value="MOOV_MONEY">Moov Money Bénin</option>
@@ -1057,108 +1052,99 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Email Client */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                    Email Client (Reçu & Notification)
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Email Client
                   </label>
                   <input
                     type="email"
                     value={simEmail}
                     onChange={(e) => setSimEmail(e.target.value)}
-                    className="w-full bg-[#0D1527] border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
                   />
                 </div>
 
-                {/* Idempotency Key */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
                       En-tête HTTP : Idempotency-Key
                     </label>
                     <button
                       onClick={() => setSimIdempotencyKey(`idemp_${Date.now()}`)}
-                      className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      className="text-xs font-semibold text-blue-700 hover:text-blue-800 flex items-center gap-1"
                     >
                       <RotateCcw className="w-3 h-3" />
                       Générer nouvelle clé
                     </button>
                   </div>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={simIdempotencyKey}
-                      onChange={(e) => setSimIdempotencyKey(e.target.value)}
-                      className="w-full bg-[#0D1527] border border-slate-700 rounded-xl font-mono text-xs px-4 py-2.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
-                    />
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Garantit qu'un réessai réseau ne débitera jamais le client deux fois.
-                  </p>
+                  <input
+                    type="text"
+                    value={simIdempotencyKey}
+                    onChange={(e) => setSimIdempotencyKey(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs px-4 py-2 text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-semibold"
+                  />
                 </div>
 
-                {/* Scénario Selector */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                     Scénario Métier à Tester
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     <button
                       type="button"
                       onClick={() => setSimScenario('SUCCESS')}
-                      className={`p-3 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 ${
+                      className={`p-3 rounded-lg border text-left text-xs font-bold transition flex items-center gap-2 ${
                         simScenario === 'SUCCESS'
-                          ? 'bg-emerald-950/50 border-emerald-500 text-emerald-200'
-                          : 'bg-[#0D1527] border-slate-700 text-slate-300 hover:border-slate-600'
+                          ? 'bg-blue-50 border-blue-700 text-blue-900'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                       }`}
                     >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      <span>Validation Succès (Nominal)</span>
+                      <CheckCircle2 className="w-4 h-4 text-blue-700 shrink-0" />
+                      <span>Succès Nominal</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setSimScenario('INSUFFICIENT_FUNDS')}
-                      className={`p-3 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 ${
+                      className={`p-3 rounded-lg border text-left text-xs font-bold transition flex items-center gap-2 ${
                         simScenario === 'INSUFFICIENT_FUNDS'
-                          ? 'bg-rose-950/50 border-rose-500 text-rose-200'
-                          : 'bg-[#0D1527] border-slate-700 text-slate-300 hover:border-slate-600'
+                          ? 'bg-blue-50 border-blue-700 text-blue-900'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                       }`}
                     >
-                      <XCircle className="w-4 h-4 text-rose-400" />
-                      <span>Solde Insuffisant (Échec)</span>
+                      <XCircle className="w-4 h-4 text-slate-500 shrink-0" />
+                      <span>Solde Insuffisant</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setSimScenario('TIMEOUT')}
-                      className={`p-3 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 ${
+                      className={`p-3 rounded-lg border text-left text-xs font-bold transition flex items-center gap-2 ${
                         simScenario === 'TIMEOUT'
-                          ? 'bg-amber-950/50 border-amber-500 text-amber-200'
-                          : 'bg-[#0D1527] border-slate-700 text-slate-300 hover:border-slate-600'
+                          ? 'bg-blue-50 border-blue-700 text-blue-900'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                       }`}
                     >
-                      <Clock className="w-4 h-4 text-amber-400" />
-                      <span>Délai Expiré (Timeout USSD)</span>
+                      <Clock className="w-4 h-4 text-slate-500 shrink-0" />
+                      <span>Délai Expiré (Timeout)</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Submit */}
                 <button
                   type="button"
                   onClick={handleRunSimulation}
                   disabled={simLoading}
-                  className="w-full mt-4 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-base rounded-xl shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2 transition"
+                  className="w-full mt-4 py-3 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-bold text-sm rounded-lg shadow-sm flex items-center justify-center gap-2 transition"
                 >
                   {simLoading ? (
                     <>
-                      <RotateCcw className="w-5 h-5 animate-spin" />
-                      <span>Communication avec la passerelle telco...</span>
+                      <RotateCcw className="w-4 h-4 animate-spin" />
+                      <span>Traitement passerelle en cours...</span>
                     </>
                   ) : (
                     <>
-                      <Send className="w-5 h-5" />
+                      <Send className="w-4 h-4" />
                       <span>Déclencher l'Encaissement Idempotent</span>
                     </>
                   )}
@@ -1166,57 +1152,35 @@ export default function App() {
               </div>
             </div>
 
-            {/* Architecture Explanation Card */}
             <div className="lg:col-span-5 space-y-6">
-              <div className="p-6 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
-                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-indigo-400" />
-                  Architecture Anti Double-Débit
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm space-y-3">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-blue-700" />
+                  Garantie Anti Double-Débit
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                  L'API vérifie en millisecondes dans le cache Redis et la table PostgreSQL la présence de la clé <code className="text-blue-300 font-mono">Idempotency-Key</code>.
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  L'API vérifie en millisecondes dans le cache Redis et la table PostgreSQL la présence de la clé <code className="text-blue-700 font-mono">Idempotency-Key</code>.
                 </p>
-
-                <div className="mt-4 p-4 rounded-xl bg-[#090D1A] border border-slate-800 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center shrink-0">1</span>
-                    <p className="text-xs text-slate-300">
-                      <strong>Requête Initiale :</strong> Création de la transaction en statut <span className="text-amber-400 font-bold">PENDING</span> avec enregistrement du token.
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center shrink-0">2</span>
-                    <p className="text-xs text-slate-300">
-                      <strong>Push USSD Télécom :</strong> Appel direct vers les passerelles partenaires (MTN, Moov, Celtiis).
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center shrink-0">3</span>
-                    <p className="text-xs text-slate-300">
-                      <strong>Rejeu Involontaire :</strong> Si le client double-clique avec la même clé, le système renvoie la réponse existante <span className="text-emerald-400 font-bold">sans créer de débit supplémentaire</span>.
-                    </p>
-                  </div>
+                <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2.5 text-xs text-slate-700">
+                  <p><strong>1. Requête Initiale :</strong> Création de la transaction en statut PENDING.</p>
+                  <p><strong>2. Appel Télécom :</strong> Envoi du push USSD au client mobile.</p>
+                  <p><strong>3. Protection Rejeu :</strong> En cas de clic répété avec la même clé, le système renvoie la transaction originale sans générer de nouveau débit.</p>
                 </div>
               </div>
 
-              {/* Commission Calculator Summary */}
-              <div className="p-6 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
-                <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-3">
-                  Calculateur de Frais Transparent
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between text-slate-300">
-                    <span>Montant brut facturé</span>
-                    <span className="font-bold text-white">{simAmount.toLocaleString()} XOF</span>
-                  </div>
-                  <div className="flex justify-between text-slate-300">
-                    <span>Commission KPay (1.5%)</span>
-                    <span className="font-bold text-indigo-400">-{Math.round(simAmount * 0.015).toLocaleString()} XOF</span>
-                  </div>
-                  <div className="pt-2 border-t border-slate-800 flex justify-between text-base font-extrabold text-emerald-400">
-                    <span>Net reversé au Marchand</span>
-                    <span>{(simAmount - Math.round(simAmount * 0.015)).toLocaleString()} XOF</span>
-                  </div>
+              <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm space-y-2">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Calcul des Frais</h4>
+                <div className="flex justify-between text-xs text-slate-600">
+                  <span>Montant brut facturé</span>
+                  <span className="font-bold text-slate-900">{simAmount.toLocaleString()} XOF</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-600">
+                  <span>Commission KPay (1.5%)</span>
+                  <span className="font-bold text-slate-700">-{Math.round(simAmount * 0.015).toLocaleString()} XOF</span>
+                </div>
+                <div className="pt-2 border-t border-slate-200 flex justify-between text-sm font-extrabold text-slate-900">
+                  <span>Net reversé au Marchand</span>
+                  <span className="text-blue-700">{(simAmount - Math.round(simAmount * 0.015)).toLocaleString()} XOF</span>
                 </div>
               </div>
             </div>
@@ -1228,29 +1192,25 @@ export default function App() {
         {/* ============================================================== */}
         {activeTab === 'webhooks' && (
           <div className="space-y-6">
-            <div className="p-6 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                 <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Radio className="w-5 h-5 text-cyan-400" />
+                  <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <Radio className="w-5 h-5 text-blue-700" />
                     Journal des Webhooks Marchand & Retry Backoff
                   </h2>
-                  <p className="text-xs sm:text-sm font-medium text-slate-300 mt-1">
-                    Notification asynchrone sécurisée par HMAC SHA-256 avec stratégie d'Exponential Backoff (5 tentatives)
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                    Notification asynchrone sécurisée par HMAC SHA-256 avec stratégie d'Exponential Backoff
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    Worker Redis Actif
-                  </span>
-                </div>
+                <span className="px-3 py-1 rounded-md bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold">
+                  Worker Redis Actif
+                </span>
               </div>
 
-              {/* Webhook Logs Table */}
-              <div className="mt-6 overflow-x-auto">
+              <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-[#16213A] text-slate-300 font-bold border-b border-slate-700">
+                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                     <tr>
                       <th className="py-3 px-4">Événement & Réf</th>
                       <th className="py-3 px-4">URL Endpoint Marchand</th>
@@ -1261,36 +1221,36 @@ export default function App() {
                       <th className="py-3 px-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-slate-100">
                     {webhookLogs.map(log => (
-                      <tr key={log.id} className="hover:bg-slate-800/40 transition">
+                      <tr key={log.id} className="hover:bg-slate-50 transition">
                         <td className="py-3.5 px-4">
-                          <div className="font-mono font-bold text-white">{log.event}</div>
-                          <div className="text-xs font-mono text-blue-400">{log.transaction_ref}</div>
+                          <div className="font-mono font-bold text-slate-900">{log.event}</div>
+                          <div className="text-xs font-mono text-blue-700">{log.transaction_ref}</div>
                         </td>
-                        <td className="py-3.5 px-4 font-mono text-xs text-slate-300 truncate max-w-[260px]">
+                        <td className="py-3.5 px-4 font-mono text-xs text-slate-600 truncate max-w-[260px]">
                           {log.url}
                         </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-slate-200">
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-700">
                           {log.attempts} / {log.max_attempts}
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono ${
                             log.response_code === 200
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}>
                             {log.response_code}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono text-xs text-slate-300">
+                        <td className="py-3.5 px-4 text-right font-mono text-xs text-slate-500">
                           {log.latency_ms} ms
                         </td>
                         <td className="py-3.5 px-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                             log.status === 'DELIVERED'
-                              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'
-                              : 'bg-rose-500/15 text-rose-300 border border-rose-500/40'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}>
                             {log.status === 'DELIVERED' ? 'Délivré' : 'Échoué'}
                           </span>
@@ -1298,9 +1258,9 @@ export default function App() {
                         <td className="py-3.5 px-4 text-right">
                           <button
                             onClick={() => handleRetryWebhook(log.id)}
-                            className="px-3 py-1 bg-[#1A2642] hover:bg-[#23335A] text-slate-200 hover:text-white rounded-lg text-xs font-bold border border-slate-700 flex items-center gap-1.5 ml-auto transition"
+                            className="px-3 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-md text-xs font-semibold border border-slate-200 flex items-center gap-1.5 ml-auto transition"
                           >
-                            <RotateCcw className="w-3.5 h-3.5 text-blue-400" />
+                            <RotateCcw className="w-3.5 h-3.5 text-blue-700" />
                             <span>Retry</span>
                           </button>
                         </td>
@@ -1318,95 +1278,87 @@ export default function App() {
         {/* ============================================================== */}
         {activeTab === 'apikeys' && (
           <div className="space-y-6">
-            <div className="p-6 rounded-2xl bg-[#111A2E] border border-slate-700/80 shadow-md">
+            <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Key className="w-5 h-5 text-emerald-400" />
-                    Gestion Sécurisée des Clés API
+                  <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <Key className="w-5 h-5 text-blue-700" />
+                    Gestion des Clés API
                   </h2>
-                  <p className="text-xs sm:text-sm font-medium text-slate-300 mt-1">
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
                     Authentification Bearer, rotation de tokens et restriction par adresses IP
                   </p>
                 </div>
                 <button
                   onClick={() => setShowNewKeyModal(true)}
-                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-bold rounded-xl shadow-md border border-emerald-400/30 flex items-center gap-2 transition"
+                  className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2 transition"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Générer Nouvelle Clé</span>
                 </button>
               </div>
 
-              {/* Api Keys Cards */}
               <div className="space-y-4">
                 {apiKeys.map(key => (
-                  <div key={key.id} className="p-5 rounded-xl bg-[#0D1527] border border-slate-700/80 space-y-4">
+                  <div key={key.id} className="p-5 rounded-lg bg-slate-50 border border-slate-200 space-y-4">
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-white text-base">{key.name}</h4>
-                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                          <h4 className="font-bold text-slate-900 text-sm">{key.name}</h4>
+                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
                             key.environment === 'LIVE'
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-slate-200 text-slate-700'
                           }`}>
                             {key.environment}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400 mt-1">Créée le {key.created_at} • Utilisée : {key.last_used_at}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Créée le {key.created_at} • Dernière utilisation : {key.last_used_at}</p>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setApiKeys(prev => prev.filter(k => k.id !== key.id));
-                          }}
-                          className="px-3 py-1.5 text-xs font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg transition"
-                        >
-                          Révoquer
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setApiKeys(prev => prev.filter(k => k.id !== key.id))}
+                        className="text-xs font-semibold text-rose-600 hover:text-rose-700"
+                      >
+                        Révoquer
+                      </button>
                     </div>
 
-                    {/* Keys Display */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Public Key */}
-                      <div className="p-3 rounded-lg bg-[#070B16] border border-slate-800">
+                      <div className="p-3 rounded-lg bg-white border border-slate-200">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-slate-400">Clé Publique (Client-Side)</span>
+                          <span className="text-xs font-bold text-slate-500">Clé Publique</span>
                           <button
                             onClick={() => handleCopy(key.prefix, `${key.id}_pub`)}
-                            className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold"
+                            className="text-xs text-blue-700 hover:text-blue-800 flex items-center gap-1 font-semibold"
                           >
-                            {copiedText === `${key.id}_pub` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            {copiedText === `${key.id}_pub` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                             {copiedText === `${key.id}_pub` ? 'Copié' : 'Copier'}
                           </button>
                         </div>
-                        <code className="text-xs font-mono font-bold text-slate-200">{key.prefix}</code>
+                        <code className="text-xs font-mono font-bold text-slate-800">{key.prefix}</code>
                       </div>
 
-                      {/* Secret Key */}
-                      <div className="p-3 rounded-lg bg-[#070B16] border border-slate-800">
+                      <div className="p-3 rounded-lg bg-white border border-slate-200">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-slate-400">Clé Secrète (Backend Server)</span>
+                          <span className="text-xs font-bold text-slate-500">Clé Secrète</span>
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => setVisibleKeyId(visibleKeyId === key.id ? null : key.id)}
-                              className="text-xs text-slate-400 hover:text-slate-200"
+                              className="text-xs text-slate-400 hover:text-slate-600"
                             >
                               {visibleKeyId === key.id ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
                             <button
                               onClick={() => handleCopy(key.secret, `${key.id}_sec`)}
-                              className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-semibold"
+                              className="text-xs text-blue-700 hover:text-blue-800 flex items-center gap-1 font-semibold"
                             >
-                              {copiedText === `${key.id}_sec` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              {copiedText === `${key.id}_sec` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                               {copiedText === `${key.id}_sec` ? 'Copié' : 'Copier'}
                             </button>
                           </div>
                         </div>
-                        <code className="text-xs font-mono font-bold text-indigo-300">
+                        <code className="text-xs font-mono font-bold text-slate-800">
                           {visibleKeyId === key.id ? key.secret : '••••••••••••••••••••••••••••••••'}
                         </code>
                       </div>
@@ -1419,148 +1371,123 @@ export default function App() {
         )}
       </main>
 
-      {/* ============================================================== */}
-      {/* DRAWER : DÉTAIL D'UNE TRANSACTION */}
-      {/* ============================================================== */}
+      {/* Drawer: Transaction details */}
       {selectedTx && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm transition-opacity">
-          <div className="w-full max-w-md bg-[#0D1527] border-l border-slate-700 h-full p-6 overflow-y-auto space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50 backdrop-blur-xs transition-opacity">
+          <div className="w-full max-w-md bg-white border-l border-slate-200 h-full p-6 overflow-y-auto space-y-6 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-white">Détail de la Transaction</h3>
-                <p className="font-mono text-xs text-blue-400">{selectedTx.reference}</p>
+                <h3 className="text-base font-bold text-slate-900">Détail de la Transaction</h3>
+                <p className="font-mono text-xs text-blue-700 font-semibold">{selectedTx.reference}</p>
               </div>
               <button
                 onClick={() => setSelectedTx(null)}
-                className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition"
+                className="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Status & Amount Hero */}
-            <div className="p-4 rounded-xl bg-[#131D33] border border-slate-700/80 text-center">
-              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${
-                statusConfig[selectedTx.status].bg
-              } ${statusConfig[selectedTx.status].text}`}>
-                {statusConfig[selectedTx.status].label}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                selectedTx.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+              }`}>
+                {selectedTx.status}
               </span>
-              <p className="text-3xl font-black text-white mt-2">
-                {selectedTx.amount.toLocaleString()} <span className="text-lg text-blue-400 font-bold">XOF</span>
+              <p className="text-3xl font-black text-slate-900 mt-2">
+                {selectedTx.amount.toLocaleString()} <span className="text-base text-slate-500 font-semibold">XOF</span>
               </p>
-              <p className="text-xs text-slate-400 mt-1">Frais retenus : {selectedTx.fee.toLocaleString()} XOF</p>
+              <p className="text-xs text-slate-500 mt-0.5">Commission retenue : {selectedTx.fee.toLocaleString()} XOF</p>
             </div>
 
-            {/* Information Grid */}
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between py-2 border-b border-slate-800">
-                <span className="text-slate-400 font-medium">Opérateur</span>
-                <span className="font-bold text-white">{operatorConfig[selectedTx.operator].label}</span>
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500 font-medium">Opérateur</span>
+                <span className="font-bold text-slate-800">{operatorNames[selectedTx.operator]}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-slate-800">
-                <span className="text-slate-400 font-medium">Téléphone Client</span>
-                <span className="font-bold text-white font-mono">{selectedTx.customer_phone}</span>
+              <div className="flex justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500 font-medium">Client</span>
+                <span className="font-bold text-slate-800 font-mono">{selectedTx.customer_phone}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-slate-800">
-                <span className="text-slate-400 font-medium">Email Client</span>
-                <span className="font-bold text-white">{selectedTx.customer_email}</span>
+              <div className="flex justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500 font-medium">Email</span>
+                <span className="font-semibold text-slate-800">{selectedTx.customer_email}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-slate-800">
-                <span className="text-slate-400 font-medium">Réf. Externe Telco</span>
-                <span className="font-mono text-xs font-bold text-slate-200">{selectedTx.external_reference || 'N/A'}</span>
+              <div className="flex justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500 font-medium">Réf. Externe Telco</span>
+                <span className="font-mono text-slate-700">{selectedTx.external_reference || 'N/A'}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-slate-800">
-                <span className="text-slate-400 font-medium">Idempotency Key</span>
-                <span className="font-mono text-xs font-bold text-indigo-300 truncate max-w-[180px]">{selectedTx.idempotency_key}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-slate-800">
-                <span className="text-slate-400 font-medium">Latence Réseau</span>
-                <span className="font-mono text-xs font-bold text-emerald-300">{selectedTx.latency_ms} ms</span>
+              <div className="flex justify-between py-2 border-b border-slate-100">
+                <span className="text-slate-500 font-medium">Idempotency Key</span>
+                <span className="font-mono text-slate-700 truncate max-w-[180px]">{selectedTx.idempotency_key}</span>
               </div>
               {selectedTx.failure_reason && (
-                <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-500/40 text-xs text-rose-300">
-                  <strong>Motif du rejet :</strong> {selectedTx.failure_reason}
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800">
+                  <strong>Rejet :</strong> {selectedTx.failure_reason}
                 </div>
               )}
             </div>
 
-            {/* Action Buttons */}
             <div className="pt-4 space-y-2">
               <button
-                onClick={() => {
-                  alert(`Reçu de paiement généré pour ${selectedTx.reference}`);
-                }}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition"
+                onClick={() => alert(`Reçu de paiement généré pour ${selectedTx.reference}`)}
+                className="w-full py-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-2 transition"
               >
                 <Download className="w-4 h-4" />
-                <span>Télécharger le Reçu Officiel</span>
+                <span>Télécharger le Reçu</span>
               </button>
-              {selectedTx.status === 'SUCCESS' && (
-                <button
-                  onClick={() => {
-                    setTransactions(prev => prev.map(t => t.id === selectedTx.id ? { ...t, status: 'REFUNDED' } : t));
-                    setSelectedTx(prev => prev ? { ...prev, status: 'REFUNDED' } : null);
-                  }}
-                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm rounded-xl flex items-center justify-center gap-2 border border-slate-700 transition"
-                >
-                  <RotateCcw className="w-4 h-4 text-amber-400" />
-                  <span>Simuler un Remboursement</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* MODAL : NOUVELLE CLÉ API */}
-      {/* ============================================================== */}
+      {/* Modal: New Api Key */}
       {showNewKeyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-[#0D1527] border border-slate-700 rounded-2xl p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-white">Générer une Nouvelle Clé API</h3>
-              <button onClick={() => setShowNewKeyModal(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">Générer une Clé API</h3>
+              <button onClick={() => setShowNewKeyModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
               </button>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                Nom du Service ou Application
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                Nom du Service
               </label>
               <input
                 type="text"
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder="Ex: Application Mobile iOS/Android"
-                className="w-full bg-[#090D1A] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                placeholder="Ex: Application Mobile"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                 Environnement Cible
               </label>
               <select
                 value={newKeyEnv}
                 onChange={(e) => setNewKeyEnv(e.target.value as 'LIVE' | 'TEST')}
-                className="w-full bg-[#090D1A] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
               >
                 <option value="LIVE">LIVE (Production)</option>
                 <option value="TEST">TEST (Sandbox)</option>
               </select>
             </div>
-            <div className="pt-2 flex items-center justify-end gap-3">
+            <div className="pt-2 flex items-center justify-end gap-2">
               <button
                 onClick={() => setShowNewKeyModal(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-sm transition"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition"
               >
                 Annuler
               </button>
               <button
                 onClick={handleCreateApiKey}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm shadow-md transition"
+                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-lg text-xs transition"
               >
-                Créer la Paire de Clés
+                Créer Clé
               </button>
             </div>
           </div>
