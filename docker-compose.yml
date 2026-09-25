@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kpay_backend
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_NAME: KPayAPI
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: kpay_db
+      DB_USERNAME: kpay_user
+      DB_PASSWORD: kpay_secure_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - kpay_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kpay_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - kpay_network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: kpay_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kpay_db
+      POSTGRES_USER: kpay_user
+      POSTGRES_PASSWORD: kpay_secure_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - kpay_pgdata:/var/lib/postgresql/data
+      - ./backend/database/init_kpay.sql:/docker-entrypoint-initdb.d/init_kpay.sql
+    networks:
+      - kpay_network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: kpay_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@platform.bj
+      PGADMIN_DEFAULT_PASSWORD: Christophe
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - kpay_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: kpay_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - kpay_redisdata:/data
+    networks:
+      - kpay_network
+
+networks:
+  kpay_network:
+    driver: bridge
+
+volumes:
+  kpay_pgdata:
+  kpay_redisdata:
