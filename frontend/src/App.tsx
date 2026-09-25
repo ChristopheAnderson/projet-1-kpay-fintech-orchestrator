@@ -27,8 +27,13 @@ import {
   ArrowRight,
   TrendingUp,
   Activity,
-  Menu
+  Menu,
+  Cpu,
+  FileSpreadsheet,
+  Database
 } from 'lucide-react';
+import SmartRoutingView from './components/SmartRoutingView';
+import DataBackupHubModal from './components/DataBackupHubModal';
 import {
   AreaChart,
   Area,
@@ -87,106 +92,109 @@ export interface ApiKeyItem {
   last_used_at: string;
 }
 
+const INITIAL_TRANSACTIONS: Transaction[] = [
+  {
+    id: 1,
+    reference: 'KPAY_8F9A2B3C4D11',
+    external_reference: 'MTN_MOMO_9482910',
+    idempotency_key: 'idemp_live_9a8b7c6d5e01',
+    amount: 45000,
+    fee: 675,
+    currency: 'XOF',
+    operator: 'MTN_MOMO',
+    status: 'SUCCESS',
+    customer_phone: '+229 97 00 12 34',
+    customer_email: 'a.mensah@cotonou-tech.bj',
+    created_at: '2026-09-25 16:42',
+    latency_ms: 380,
+  },
+  {
+    id: 2,
+    reference: 'KPAY_7E8D1C2B3A09',
+    external_reference: 'MOOV_FLOOZ_5829102',
+    idempotency_key: 'idemp_live_7e8d1c2b3a02',
+    amount: 120000,
+    fee: 1800,
+    currency: 'XOF',
+    operator: 'MOOV_MONEY',
+    status: 'SUCCESS',
+    customer_phone: '+229 95 11 22 33',
+    customer_email: 'finance@afri-import.bj',
+    created_at: '2026-09-25 15:30',
+    latency_ms: 410,
+  },
+  {
+    id: 3,
+    reference: 'KPAY_5A6B7C8D9E04',
+    external_reference: 'CELTIIS_CASH_1029384',
+    idempotency_key: 'idemp_live_5a6b7c8d9e03',
+    amount: 15000,
+    fee: 225,
+    currency: 'XOF',
+    operator: 'CELTIIS_CASH',
+    status: 'PENDING',
+    customer_phone: '+229 40 88 99 00',
+    customer_email: 'contact@boutique-haie-vive.com',
+    created_at: '2026-09-25 15:12',
+    latency_ms: 620,
+  },
+  {
+    id: 4,
+    reference: 'KPAY_3C4D5E6F7A8B',
+    external_reference: 'MTN_ERR_TIMEOUT',
+    idempotency_key: 'idemp_live_3c4d5e6f7a04',
+    amount: 85000,
+    fee: 1275,
+    currency: 'XOF',
+    operator: 'MTN_MOMO',
+    status: 'FAILED',
+    failure_reason: 'Délai de validation USSD dépassé par l abonné (Timeout)',
+    customer_phone: '+229 96 44 55 66',
+    customer_email: 's.dossou@gmail.com',
+    created_at: '2026-09-25 14:05',
+    latency_ms: 2950,
+  },
+  {
+    id: 5,
+    reference: 'KPAY_1F2E3D4C5B6A',
+    external_reference: 'VISA_AUTH_902819',
+    idempotency_key: 'idemp_live_1f2e3d4c5b05',
+    amount: 250000,
+    fee: 5000,
+    currency: 'XOF',
+    operator: 'VISA_CARD',
+    status: 'SUCCESS',
+    customer_phone: '+229 90 12 34 56',
+    customer_email: 'direction@logistique-sahel.com',
+    created_at: '2026-09-25 12:45',
+    latency_ms: 320,
+  },
+  {
+    id: 6,
+    reference: 'KPAY_9A8B7C6D5E4F',
+    external_reference: 'MOOV_ERR_INSUFFICIENT',
+    idempotency_key: 'idemp_live_9a8b7c6d5e06',
+    amount: 35000,
+    fee: 525,
+    currency: 'XOF',
+    operator: 'MOOV_MONEY',
+    status: 'FAILED',
+    failure_reason: 'Solde du portefeuille client insuffisant pour couvrir la charge',
+    customer_phone: '+229 94 33 22 11',
+    customer_email: 'j.agboton@yahoo.fr',
+    created_at: '2026-09-25 11:20',
+    latency_ms: 450,
+  }
+];
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'ledger' | 'simulator' | 'webhooks' | 'apikeys'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'ledger' | 'simulator' | 'webhooks' | 'apikeys' | 'routing'>('routing');
   const [environment, setEnvironment] = useState<'LIVE' | 'TEST'>('LIVE');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showDataHub, setShowDataHub] = useState(false);
 
-  // Transactions State
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: 1,
-      reference: 'KPAY_8F9A2B3C4D11',
-      external_reference: 'MTN_MOMO_9482910',
-      idempotency_key: 'idemp_live_9a8b7c6d5e01',
-      amount: 45000,
-      fee: 675,
-      currency: 'XOF',
-      operator: 'MTN_MOMO',
-      status: 'SUCCESS',
-      customer_phone: '+229 97 00 12 34',
-      customer_email: 'a.mensah@cotonou-tech.bj',
-      created_at: '2026-09-25 16:42',
-      latency_ms: 380,
-    },
-    {
-      id: 2,
-      reference: 'KPAY_7E8D1C2B3A09',
-      external_reference: 'MOOV_FLOOZ_5829102',
-      idempotency_key: 'idemp_live_7e8d1c2b3a02',
-      amount: 120000,
-      fee: 1800,
-      currency: 'XOF',
-      operator: 'MOOV_MONEY',
-      status: 'SUCCESS',
-      customer_phone: '+229 95 11 22 33',
-      customer_email: 'finance@afri-import.bj',
-      created_at: '2026-09-25 15:30',
-      latency_ms: 410,
-    },
-    {
-      id: 3,
-      reference: 'KPAY_5A6B7C8D9E04',
-      external_reference: 'CELTIIS_CASH_1029384',
-      idempotency_key: 'idemp_live_5a6b7c8d9e03',
-      amount: 15000,
-      fee: 225,
-      currency: 'XOF',
-      operator: 'CELTIIS_CASH',
-      status: 'PENDING',
-      customer_phone: '+229 40 88 99 00',
-      customer_email: 'contact@boutique-haie-vive.com',
-      created_at: '2026-09-25 15:12',
-      latency_ms: 620,
-    },
-    {
-      id: 4,
-      reference: 'KPAY_3C4D5E6F7A8B',
-      external_reference: 'MTN_ERR_TIMEOUT',
-      idempotency_key: 'idemp_live_3c4d5e6f7a04',
-      amount: 85000,
-      fee: 1275,
-      currency: 'XOF',
-      operator: 'MTN_MOMO',
-      status: 'FAILED',
-      failure_reason: 'Délai de validation USSD dépassé par l abonné (Timeout)',
-      customer_phone: '+229 96 44 55 66',
-      customer_email: 's.dossou@gmail.com',
-      created_at: '2026-09-25 14:05',
-      latency_ms: 2950,
-    },
-    {
-      id: 5,
-      reference: 'KPAY_1F2E3D4C5B6A',
-      external_reference: 'VISA_AUTH_902819',
-      idempotency_key: 'idemp_live_1f2e3d4c5b05',
-      amount: 250000,
-      fee: 5000,
-      currency: 'XOF',
-      operator: 'VISA_CARD',
-      status: 'SUCCESS',
-      customer_phone: '+229 90 12 34 56',
-      customer_email: 'direction@logistique-sahel.com',
-      created_at: '2026-09-25 12:45',
-      latency_ms: 320,
-    },
-    {
-      id: 6,
-      reference: 'KPAY_9A8B7C6D5E4F',
-      external_reference: 'MOOV_ERR_INSUFFICIENT',
-      idempotency_key: 'idemp_live_9a8b7c6d5e06',
-      amount: 35000,
-      fee: 525,
-      currency: 'XOF',
-      operator: 'MOOV_MONEY',
-      status: 'FAILED',
-      failure_reason: 'Solde du portefeuille client insuffisant pour couvrir la charge',
-      customer_phone: '+229 94 33 22 11',
-      customer_email: 'j.agboton@yahoo.fr',
-      created_at: '2026-09-25 11:20',
-      latency_ms: 450,
-    }
-  ]);
+  // Transactions State (Initialized with baseline data, dynamic Excel & JSON support)
+  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
 
   // Webhook Logs
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([
@@ -490,6 +498,16 @@ export default function App() {
                 </button>
               </div>
 
+              {/* Data Management Hub (Excel / JSON / Reset) */}
+              <button
+                onClick={() => setShowDataHub(true)}
+                className="hidden md:flex px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold rounded-lg items-center gap-2 transition shadow-xs"
+                title="Gérer la base de données : Excel (.xlsx), JSON ou Restauration usine"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>Base Données (Excel/JSON)</span>
+              </button>
+
               {/* Action Button */}
               <button
                 onClick={() => setActiveTab('simulator')}
@@ -569,12 +587,25 @@ export default function App() {
               <Key className="w-4 h-4" />
               <span>Sécurité & Clés API</span>
             </button>
+            <button
+              onClick={() => setActiveTab('routing')}
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-semibold transition whitespace-nowrap ${
+                activeTab === 'routing'
+                  ? 'border-blue-700 text-blue-700 bg-blue-50/50'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              <Cpu className="w-4 h-4 text-indigo-600" />
+              <span>Smart Routing & Cascading (Drag & Drop)</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-blue-100 text-blue-800 animate-pulse">NOUVEAU</span>
+            </button>
           </div>
 
           {/* Mobile Dropdown Navigation */}
           {mobileMenuOpen && (
             <div className="sm:hidden py-3 border-t border-slate-200 space-y-1">
               {[
+                { id: 'routing', label: 'Smart Routing & Cascading (Drag & Drop)', icon: Cpu },
                 { id: 'analytics', label: 'Tableau de Bord & KPIs', icon: BarChart3 },
                 { id: 'ledger', label: `Grand Livre (${transactions.length})`, icon: ListOrdered },
                 { id: 'simulator', label: 'Simulateur & Idempotence', icon: Zap },
@@ -842,25 +873,35 @@ export default function App() {
                     Registre complet inaltérable et audit de conformité financière UEMOA
                   </p>
                 </div>
-                <button
-                  onClick={() => {
-                    const csvContent = "data:text/csv;charset=utf-8," + 
-                      ["Reference,Montant,Frais,Operateur,Statut,Client,Date",
-                        ...transactions.map(t => `${t.reference},${t.amount},${t.fee},${t.operator},${t.status},${t.customer_phone},${t.created_at}`)
-                      ].join("\n");
-                    const encodedUri = encodeURI(csvContent);
-                    const link = document.createElement("a");
-                    link.setAttribute("href", encodedUri);
-                    link.setAttribute("download", `kpay_transactions_${Date.now()}.csv`);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }}
-                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold rounded-lg border border-slate-200 flex items-center gap-2 transition"
-                >
-                  <Download className="w-4 h-4 text-slate-500" />
-                  <span>Exporter CSV</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowDataHub(true)}
+                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs sm:text-sm font-bold rounded-lg border border-emerald-300 flex items-center gap-2 transition shadow-xs"
+                    title="Synchronisation Excel & JSON"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <span>Base Excel / JSON</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const csvContent = "data:text/csv;charset=utf-8," + 
+                        ["Reference,Montant,Frais,Operateur,Statut,Client,Date",
+                          ...transactions.map(t => `${t.reference},${t.amount},${t.fee},${t.operator},${t.status},${t.customer_phone},${t.created_at}`)
+                        ].join("\n");
+                      const encodedUri = encodeURI(csvContent);
+                      const link = document.createElement("a");
+                      link.setAttribute("href", encodedUri);
+                      link.setAttribute("download", `kpay_transactions_${Date.now()}.csv`);
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold rounded-lg border border-slate-200 flex items-center gap-2 transition"
+                  >
+                    <Download className="w-4 h-4 text-slate-500" />
+                    <span>Exporter CSV</span>
+                  </button>
+                </div>
               </div>
 
               {/* Filters */}
@@ -1012,9 +1053,9 @@ export default function App() {
                       type="number"
                       value={simAmount}
                       onChange={(e) => setSimAmount(Number(e.target.value))}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-lg font-extrabold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="input-shadcn text-lg font-extrabold pr-28 text-slate-900 font-display"
                     />
-                    <span className="absolute right-4 top-3 text-sm font-bold text-slate-500">
+                    <span className="absolute right-3.5 top-2.5 px-2 py-0.5 rounded-md bg-slate-100 text-xs font-bold text-slate-600 border border-slate-200">
                       XOF (FCFA)
                     </span>
                   </div>
@@ -1022,7 +1063,7 @@ export default function App() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
                       Numéro Téléphone Client
                     </label>
                     <input
@@ -1030,48 +1071,49 @@ export default function App() {
                       value={simPhone}
                       onChange={(e) => handlePhoneChange(e.target.value)}
                       placeholder="+229 97 00 00 00"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="input-shadcn"
                     />
-                    <p className="text-[11px] text-slate-500 mt-1">Détection opérateur selon préfixe Bénin</p>
+                    <p className="text-[11px] text-slate-500 mt-1.5">Détection automatique selon l'indicatif opérateur</p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
                       Opérateur Passerelle
                     </label>
                     <select
                       value={simOperator}
                       onChange={(e) => setSimOperator(e.target.value as PaymentOperator)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="select-shadcn"
                     >
                       <option value="MTN_MOMO">MTN Mobile Money Bénin</option>
                       <option value="MOOV_MONEY">Moov Money Bénin</option>
                       <option value="CELTIIS_CASH">Celtiis Cash Bénin</option>
-                      <option value="VISA_CARD">Carte Visa / Mastercard</option>
+                      <option value="VISA_CARD">Carte Bancaire Visa / Mastercard</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Email Client
                   </label>
                   <input
                     type="email"
                     value={simEmail}
                     onChange={(e) => setSimEmail(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    placeholder="client@domaine.bj"
+                    className="input-shadcn"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    <label className="block text-xs font-bold text-slate-700">
                       En-tête HTTP : Idempotency-Key
                     </label>
                     <button
                       onClick={() => setSimIdempotencyKey(`idemp_${Date.now()}`)}
-                      className="text-xs font-semibold text-blue-700 hover:text-blue-800 flex items-center gap-1"
+                      className="text-xs font-semibold text-blue-700 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                     >
                       <RotateCcw className="w-3 h-3" />
                       Générer nouvelle clé
@@ -1081,7 +1123,7 @@ export default function App() {
                     type="text"
                     value={simIdempotencyKey}
                     onChange={(e) => setSimIdempotencyKey(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs px-4 py-2 text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-semibold"
+                    className="input-shadcn font-mono text-xs font-bold text-slate-800"
                   />
                 </div>
 
@@ -1135,7 +1177,7 @@ export default function App() {
                   type="button"
                   onClick={handleRunSimulation}
                   disabled={simLoading}
-                  className="w-full mt-4 py-3 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-bold text-sm rounded-lg shadow-sm flex items-center justify-center gap-2 transition"
+                  className="btn-primary-gradient w-full py-3.5 mt-4 text-sm font-bold shadow-md hover:shadow-lg"
                 >
                   {simLoading ? (
                     <>
@@ -1369,6 +1411,11 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* ============================================================== */}
+        {/* TAB 6: SMART ROUTING & MULTI-PSP CASCADING (DRAG & DROP) */}
+        {/* ============================================================== */}
+        {activeTab === 'routing' && <SmartRoutingView />}
       </main>
 
       {/* Drawer: Transaction details */}
@@ -1443,55 +1490,77 @@ export default function App() {
 
       {/* Modal: New Api Key */}
       {showNewKeyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Générer une Clé API</h3>
-              <button onClick={() => setShowNewKeyModal(false)} className="text-slate-400 hover:text-slate-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-7 space-y-5 shadow-2xl animate-scaleUp">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+                  <Key className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 font-display">Générer une Clé API</h3>
+              </div>
+              <button 
+                onClick={() => setShowNewKeyModal(false)} 
+                className="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Nom du Service
-              </label>
-              <input
-                type="text"
-                value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder="Ex: Application Mobile"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Nom du Service / Application</span>
+                </label>
+                <input
+                  type="text"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  placeholder="Ex: Application Mobile iOS/Android"
+                  className="input-shadcn"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Environnement Cible</span>
+                </label>
+                <select
+                  value={newKeyEnv}
+                  onChange={(e) => setNewKeyEnv(e.target.value as 'LIVE' | 'TEST')}
+                  className="select-shadcn"
+                >
+                  <option value="LIVE">LIVE (Production - Trafic Réel)</option>
+                  <option value="TEST">TEST (Sandbox - Simulation)</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Environnement Cible
-              </label>
-              <select
-                value={newKeyEnv}
-                onChange={(e) => setNewKeyEnv(e.target.value as 'LIVE' | 'TEST')}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
-              >
-                <option value="LIVE">LIVE (Production)</option>
-                <option value="TEST">TEST (Sandbox)</option>
-              </select>
-            </div>
-            <div className="pt-2 flex items-center justify-end gap-2">
+            <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
               <button
                 onClick={() => setShowNewKeyModal(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition cursor-pointer"
               >
                 Annuler
               </button>
               <button
                 onClick={handleCreateApiKey}
-                className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-lg text-xs transition"
+                className="btn-primary-gradient text-xs px-5 py-2.5"
               >
-                Créer Clé
+                Créer la Clé Sécurisée
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: Data Backup Hub (Excel / JSON / Factory Reset) */}
+      {showDataHub && (
+        <DataBackupHubModal
+          transactions={transactions}
+          initialTransactions={INITIAL_TRANSACTIONS}
+          onUpdateTransactions={setTransactions}
+          onClose={() => setShowDataHub(false)}
+        />
       )}
     </div>
   );
